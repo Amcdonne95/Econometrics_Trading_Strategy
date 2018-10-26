@@ -1,16 +1,42 @@
-install.packages('dplyr')
-install.packages("data.table")
+#install.packages('dplyr')
+#install.packages("data.table")
+#install.packages('lubridate')
 library(dplyr)
 library(data.table)
+library(lubridate)
 
-setwd('\\\\icnas3.cc.ic.ac.uk/am718/R_Scripts/Econometrics')
+#setwd('\\\\icnas3.cc.ic.ac.uk/am718/R_Scripts/Econometrics')
 
 #loads the initial data
-load('Data/TEST_data_subset.RData')
+load('TEST_data_subset.RData')
 
 #turns the dataframe into a r table object
 df = tbl_df(data_mining)
 remove(data_mining)
+
+df = df %>%
+  dplyr::mutate(year = lubridate::year(date), 
+                month = lubridate::month(date), 
+                day = lubridate::day(date))
+
+numYears = tail(df$year, n=1) - head(df$year, n=1)
+numMonths = numYears*12
+df = arrange(df, date, permno)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 #loads in the SIC descriptions and changes it to a table
 sic_dict = read.csv('Data/SIC07_CH_condensed_list_en.csv')
