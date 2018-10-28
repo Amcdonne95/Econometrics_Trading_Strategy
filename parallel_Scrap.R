@@ -8,7 +8,8 @@ library(foreach)
 
 
 setwd("C:\\Users\\austi\\Desktop\\Imperial\\Modules\\Econometrics\\R_CourseWork\\Econometrics_Trading_Strategy")
-
+winners=list()
+losers=list()
 
 load('TEST_data_subset.RData')
 data = tbl_df(data_mining)
@@ -35,6 +36,14 @@ firstDays=datesInd$date[datesInd$indic!=0]
 numcores = detectCores(logical = FALSE)
 cl = makeCluster(numcores)
 
+clusterEvalQ(cl, {
+  library(dplyr)
+  library(data.table)
+  library(lubridate)
+})
+clusterExport(cl, c("winners", "losers", "data", "firstDays"))
+
+
 foreach(t = 1:(length(firstDays)-17), .combine = 'rbind') %dopar% {
   formation= data %>%
     filter(date>=firstDays[t] & date<firstDays[12+t]) %>%
@@ -50,23 +59,30 @@ foreach(t = 1:(length(firstDays)-17), .combine = 'rbind') %dopar% {
       summarise(cum_ret=sum(log_ret, na.rm=T), avg_ME=mean(cap), month=t) %>%
       arrange(cum_ret)
     n=ceiling(nrow(rank)/10)
-    print(cat("Industry----------- ", i))
+    #print(cat("Industry----------- ", i))
     #print(i)
+    
     if(t==1){
-      print(rank[1:n,])
-      print(rank[(nrow(rank)-n+1):nrow(rank),])
+      losers[[i]] = rank[1:n,]
+      winners[[i]]=rank[(nrow(rank)-n+1):nrow(rank),]
       
       #This if/else is not crucial, it just makes winners not have an NA row if there are no stocks
     }
     else{
-      print(rank[1:n,])
-      print(rank[(nrow(rank)-n+1):nrow(rank),])
+      losers[[i]]=bind_rows(losers[[i]], rank[1:n,])
+      winners[[i]]=bind_rows(winners[[i]], rank[(nrow(rank)-n+1):nrow(rank),])
     }
   }
 }
 
 stopCluster(cl)
 
+winners_report=winners[[1]] %>% summarise(nStocks=n(), avg_ME=mean(avg_ME))
+losers_report=losers[[1]] %>% summarise(nStocks=n(), avg_ME=mean(avg_ME))
+for(i in 2:12){
+  winners_report=bind_rows(winners_report, winners[[i]] %>% summarise(nStocks=n(), avg_ME=mean(avg_ME)))
+  losers_report=bind_rows(losers_report, losers[[i]] %>% summarise(nStocks=n(), avg_ME=mean(avg_ME)))
+}
 
 
 
